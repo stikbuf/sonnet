@@ -23,6 +23,7 @@ import collections
 # Dependency imports
 
 import numpy as np
+from six.moves import xrange  # pylint: disable=redefined-builtin
 import sonnet as snt
 from sonnet.testing import parameterized
 import tensorflow as tf
@@ -293,6 +294,34 @@ class LinearTest(tf.test.TestCase, parameterized.ParameterizedTestCase):
     regularizers = tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES)
     self.assertRegexpMatches(regularizers[0].name, ".*l1_regularizer.*")
     self.assertRegexpMatches(regularizers[1].name, ".*l2_regularizer.*")
+
+  def testClone(self):
+    inputs = tf.zeros([1, 100])
+    linear = snt.Linear(output_size=self.out_size)
+    clone1 = linear.clone()
+    clone2 = linear.clone(name="clone2")
+
+    linear(inputs)
+    clone1(inputs)
+    clone2(inputs)
+
+    all_vars = tf.trainable_variables()
+    linear_vars = tf.get_collection(
+        tf.GraphKeys.TRAINABLE_VARIABLES,
+        scope=linear.variable_scope.name + "/")
+    clone1_vars = tf.get_collection(
+        tf.GraphKeys.TRAINABLE_VARIABLES,
+        scope=clone1.variable_scope.name + "/")
+    clone2_vars = tf.get_collection(
+        tf.GraphKeys.TRAINABLE_VARIABLES,
+        scope=clone2.variable_scope.name + "/")
+
+    self.assertEqual(linear.output_size, clone1.output_size)
+    self.assertEqual(linear.module_name + "_clone", clone1.module_name)
+    self.assertEqual("clone2", clone2.module_name)
+    self.assertEqual(len(all_vars), 3*len(linear_vars))
+    self.assertEqual(len(linear_vars), len(clone1_vars))
+    self.assertEqual(len(linear_vars), len(clone2_vars))
 
   @parameterized.NamedParameters(
       ("WithBias", True),

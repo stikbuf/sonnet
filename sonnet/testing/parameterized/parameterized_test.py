@@ -19,6 +19,8 @@ import collections
 import unittest
 
 # Dependency imports
+import six
+from six.moves import xrange  # pylint: disable=redefined-builtin
 from sonnet.testing import parameterized
 
 from tensorflow.python.platform import googletest
@@ -280,23 +282,6 @@ class ParameterizedTestsTest(googletest.TestCase):
     self.assertEqual(1, len(res.failures))
     self.assertEqual(0, len(res.errors))
 
-  def testShortDescription(self):
-    ts = unittest.makeSuite(self.GoodAdditionParams)
-    short_desc = list(ts)[0].shortDescription().split('\n')
-    self.assertEqual(
-        'testAddition(1, 2, 3)', short_desc[1])
-    self.assertTrue(
-        short_desc[0].startswith('testAddition '))
-
-  def testShortDescriptionAddressesRemoved(self):
-    ts = unittest.makeSuite(self.ArgumentsWithAddresses)
-    short_desc = list(ts)[0].shortDescription().split('\n')
-    self.assertEqual(
-        'testSomething(<object>)', short_desc[1])
-    short_desc = list(ts)[1].shortDescription().split('\n')
-    self.assertEqual(
-        'testSomething(<__main__.MyOwnClass>)', short_desc[1])
-
   def testId(self):
     ts = unittest.makeSuite(self.ArgumentsWithAddresses)
     self.assertEqual(
@@ -313,17 +298,6 @@ class ParameterizedTestsTest(googletest.TestCase):
     ts.run(res)
     self.assertEqual(2, res.testsRun)
     self.assertTrue(res.wasSuccessful())
-
-  def testNoParameterizedTests(self):
-    ts = unittest.makeSuite(self.NoParameterizedTests)
-    self.assertEqual(2, ts.countTestCases())
-    short_descs = [x.shortDescription() for x in list(ts)]
-    self.assertEqual(
-        [
-            'testGenerator (__main__.NoParameterizedTests)',
-            'testNormal (__main__.NoParameterizedTests)'
-        ],
-        short_descs)
 
   def testGeneratorTests(self):
     ts = unittest.makeSuite(self.GeneratorTests)
@@ -357,15 +331,6 @@ class ParameterizedTestsTest(googletest.TestCase):
         '__main__.UnderscoreNamedTests.test_something_interesting',
         ts[1].id())
 
-  def testNamedParametersShortDescription(self):
-    ts = sorted(unittest.makeSuite(self.NamedTests),
-                key=lambda t: t.id())
-    short_desc = ts[0].shortDescription().split('\n')
-    self.assertEqual(
-        'testSomethingBoring(1)', short_desc[1])
-    self.assertTrue(
-        short_desc[0].startswith('testSomething'))
-
   def testLoadNamedTest(self):
     loader = unittest.TestLoader()
     ts = list(loader.loadTestsFromName('NamedTests.testSomethingInteresting',
@@ -392,7 +357,9 @@ class ParameterizedTestsTest(googletest.TestCase):
 
     expected_testcases = [1, 2, 3, 4, 5, 6]
     self.assertTrue(hasattr(testSomething, 'testcases'))
-    self.assertItemsEqual(expected_testcases, testSomething.testcases)
+    assert_items_equal = (self.assertCountEqual if six.PY3
+                          else self.assertItemsEqual)
+    assert_items_equal(expected_testcases, testSomething.testcases)
 
   def testChainedDecorator(self):
     ts = unittest.makeSuite(self.ChainedTests)
